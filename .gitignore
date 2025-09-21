@@ -1,0 +1,12 @@
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+
+# Base de données locale
+*.db
+
+# Fichiers temporaires
+*.log
+*.bak
+.DS_Store
