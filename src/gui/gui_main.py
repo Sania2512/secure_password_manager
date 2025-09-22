@@ -97,11 +97,12 @@ def show_dashboard(root):
     key = SESSION["encryption_key"]
 
     for entry in entries:
-        entry_id, service_enc, username_enc, password_enc, nonce, tag = entry
+        (entry_id, service_enc, username_enc, password_enc,
+        nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p) = entry
         try:
-            service = decrypt_data(key, service_enc, nonce, tag).decode()
-            username = decrypt_data(key, username_enc, nonce, tag).decode()
-            password = decrypt_data(key, password_enc, nonce, tag).decode()
+            service = decrypt_data(key, service_enc, nonce_s, tag_s).decode()
+            username = decrypt_data(key, username_enc, nonce_u, tag_u).decode()
+            password = decrypt_data(key, password_enc, nonce_p, tag_p).decode()
         except Exception:
             service = "[Erreur de déchiffrement]"
             username = password = ""
@@ -141,12 +142,9 @@ def add_entry(root):
     password_enc, nonce_p, tag_p = encrypt_data(key, password.encode())
 
     insert_entry(
-        SESSION["user_id"],
-        service_enc,
-        username_enc,
-        password_enc,
-        nonce_p,
-        tag_p
+    SESSION["user_id"],
+    service_enc, username_enc, password_enc,
+    nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p
     )
     messagebox.showinfo("Succès", "Entrée ajoutée.")
     show_dashboard(root)

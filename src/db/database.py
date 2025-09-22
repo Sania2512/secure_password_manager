@@ -25,13 +25,17 @@ def initialize_database():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            service_name_encrypted BLOB NOT NULL,
-            username_encrypted BLOB NOT NULL,
-            password_encrypted BLOB NOT NULL,
-            nonce BLOB NOT NULL,
-            tag BLOB NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id)
+            user_id INTEGER,
+            service BLOB,
+            username BLOB,
+            password BLOB,
+            nonce_service BLOB,
+            tag_service BLOB,
+            nonce_username BLOB,
+            tag_username BLOB,
+            nonce_password BLOB,
+            tag_password BLOB,
+            FOREIGN KEY(user_id) REFERENCES users(id)
         );
         """)
 
@@ -54,25 +58,35 @@ def get_user(username):
         """, (username,))
         return cursor.fetchone()
 
-def insert_entry(user_id, service_name, username, password, nonce, tag):
+def insert_entry(user_id, service, username, password,
+                 nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p):
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-        INSERT INTO entries (user_id, service_name_encrypted, username_encrypted, password_encrypted, nonce, tag)
-        VALUES (?, ?, ?, ?, ?, ?);
-        """, (user_id, service_name, username, password, nonce, tag))
+            INSERT INTO entries (
+                user_id, service, username, password,
+                nonce_service, tag_service,
+                nonce_username, tag_username,
+                nonce_password, tag_password
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, (
+            user_id, service, username, password,
+            nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p
+        ))
         conn.commit()
 
 def get_entries(user_id):
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-        SELECT id, service_name_encrypted, username_encrypted, password_encrypted, nonce, tag
-        FROM entries WHERE user_id = ?;
+            SELECT id, service, username, password,
+                   nonce_service, tag_service,
+                   nonce_username, tag_username,
+                   nonce_password, tag_password
+            FROM entries WHERE user_id = ?;
         """, (user_id,))
         return cursor.fetchall()
 
-# Tu pourras ajouter update_entry, delete_entry, etc. plus tard
 
 def update_entry(entry_id, service_name, username, password, nonce, tag):
     with get_connection() as conn:
