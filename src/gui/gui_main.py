@@ -23,6 +23,14 @@ def show_login_screen(root):
     password_entry = tk.Entry(root, show="*")
     password_entry.pack()
 
+   # --- Afficher/masquer le mot de passe ---
+    show_pw_var = tk.BooleanVar(value=False)
+    def toggle_password():
+        password_entry.config(show="" if show_pw_var.get() else "*")
+
+    tk.Checkbutton(root, text="Afficher le mot de passe",
+                   variable=show_pw_var, command=toggle_password).pack(pady=2)
+    
     def attempt_login():
         from src.auth.auth_manager import authenticate_user
         username = username_entry.get()
@@ -51,6 +59,14 @@ def show_registration_screen(root):
     tk.Label(root, text="Confirmer le mot de passe").pack()
     confirm_entry = tk.Entry(root, show="*")
     confirm_entry.pack()
+
+       # --- Afficher/masquer le mot de passe ---
+    show_pw_var = tk.BooleanVar(value=False)
+    def toggle_password():
+        password_entry.config(show="" if show_pw_var.get() else "*")
+
+    tk.Checkbutton(root, text="Afficher le mot de passe",
+                   variable=show_pw_var, command=toggle_password).pack(pady=2)
 
     def attempt_registration():
         from src.auth.auth_manager import create_user
