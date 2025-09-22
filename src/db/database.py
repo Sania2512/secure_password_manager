@@ -72,6 +72,24 @@ def get_entries(user_id):
         return cursor.fetchall()
 
 # Tu pourras ajouter update_entry, delete_entry, etc. plus tard
-def update_entry(entry):
-    
 
+def update_entry(entry_id, service_name, username, password, nonce, tag):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        UPDATE entries
+        SET service_name_encrypted = ?, username_encrypted = ?, password_encrypted = ?, nonce = ?, tag = ?
+        WHERE id = ?;
+        """, (service_name, username, password, nonce, tag, entry_id))
+        conn.commit()
+
+def delete_entry(entry_id):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        DELETE FROM entries WHERE id = ?;
+        """, (entry_id,))
+        conn.commit()
+
+# Initialisation de la base de données à l'importation du module
+initialize_database()
