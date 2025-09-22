@@ -72,3 +72,6 @@ def get_entries(user_id):
         return cursor.fetchall()
 
 # Tu pourras ajouter update_entry, delete_entry, etc. plus tard
+def update_entry(entry):
+    
+
