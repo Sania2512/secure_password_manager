@@ -130,7 +130,7 @@ def show_dashboard(root):
 def add_entry(root):
     service = simpledialog.askstring("Service", "Nom du service :")
     username = simpledialog.askstring("Identifiant", "Nom d'utilisateur ou email :")
-    password = simpledialog.askstring("Mot de passe", "Mot de passe à stocker :")
+    password = simpledialog.askstring("Mot de passe", "Mot de passe correspondant :")
 
     if not all([service, username, password]):
         messagebox.showerror("Erreur", "Tous les champs sont requis.")
