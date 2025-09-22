@@ -6,34 +6,35 @@ from src.db.database import get_entries
 from src.crypto.crypto_utils import decrypt_data
 import tkinter as tk
 
-def add_entry(root):
-    service = simpledialog.askstring("Service", "Nom du service :")
-    username = simpledialog.askstring("Identifiant", "Nom d'utilisateur ou email :")
-    password = simpledialog.askstring("Mot de passe", "Mot de passe à stocker :")
-
-    if not all([service, username, password]):
-        messagebox.showerror("Erreur", "Tous les champs sont requis.")
-        return
-
-    key = SESSION["encryption_key"]
-    service_enc, nonce_s, tag_s = encrypt_data(key, service.encode())
-    username_enc, nonce_u, tag_u = encrypt_data(key, username.encode())
-    password_enc, nonce_p, tag_p = encrypt_data(key, password.encode())
-
-    insert_entry(
-        SESSION["user_id"],
-        service_enc,
-        username_enc,
-        password_enc,
-        nonce_p,
-        tag_p
-    )
-    messagebox.showinfo("Succès", "Entrée ajoutée.")
-    show_dashboard(root)
-
 def clear_window(root):
     for widget in root.winfo_children():
         widget.destroy()
+
+
+def show_login_screen(root):
+    clear_window(root)
+    tk.Label(root, text="Gestionnaire de Mots de Passe", font=("Arial", 16)).pack(pady=10)
+
+    tk.Label(root, text="Nom d'utilisateur").pack()
+    username_entry = tk.Entry(root)
+    username_entry.pack()
+
+    tk.Label(root, text="Mot de passe maître").pack()
+    password_entry = tk.Entry(root, show="*")
+    password_entry.pack()
+
+    def attempt_login():
+        from src.auth.auth_manager import authenticate_user
+        username = username_entry.get()
+        password = password_entry.get()
+        if authenticate_user(username, password):
+            messagebox.showinfo("Succès", "Connexion réussie.")
+            show_dashboard(root)
+        else:
+            messagebox.showerror("Erreur", "Échec de la connexion.")
+
+    tk.Button(root, text="Se connecter", command=attempt_login).pack(pady=5)
+    tk.Button(root, text="Créer un compte", command=lambda: [clear_window(root), show_registration_screen(root)]).pack(pady=5)
 
 def show_registration_screen(root):
     clear_window(root)
@@ -69,31 +70,6 @@ def show_registration_screen(root):
 
     tk.Button(root, text="Créer le compte", command=attempt_registration).pack(pady=5)
     tk.Button(root, text="Retour à la connexion", command=lambda: [clear_window(root), show_login_screen(root)]).pack(pady=5)
-
-def show_login_screen(root):
-    clear_window(root)
-    tk.Label(root, text="Gestionnaire de Mots de Passe", font=("Arial", 16)).pack(pady=10)
-
-    tk.Label(root, text="Nom d'utilisateur").pack()
-    username_entry = tk.Entry(root)
-    username_entry.pack()
-
-    tk.Label(root, text="Mot de passe maître").pack()
-    password_entry = tk.Entry(root, show="*")
-    password_entry.pack()
-
-    def attempt_login():
-        from src.auth.auth_manager import authenticate_user
-        username = username_entry.get()
-        password = password_entry.get()
-        if authenticate_user(username, password):
-            messagebox.showinfo("Succès", "Connexion réussie.")
-            show_dashboard(root)
-        else:
-            messagebox.showerror("Erreur", "Échec de la connexion.")
-
-    tk.Button(root, text="Se connecter", command=attempt_login).pack(pady=5)
-    tk.Button(root, text="Créer un compte", command=lambda: [clear_window(root), show_registration_screen(root)]).pack(pady=5)
 
 def show_dashboard(root):
     clear_window(root)
@@ -133,3 +109,37 @@ def show_dashboard(root):
                 show_dashboard(root)
 
         tk.Button(frame, text="Supprimer", command=confirm_delete).pack(side=tk.RIGHT)
+
+def add_entry(root):
+    service = simpledialog.askstring("Service", "Nom du service :")
+    username = simpledialog.askstring("Identifiant", "Nom d'utilisateur ou email :")
+    password = simpledialog.askstring("Mot de passe", "Mot de passe à stocker :")
+
+    if not all([service, username, password]):
+        messagebox.showerror("Erreur", "Tous les champs sont requis.")
+        return
+
+    key = SESSION["encryption_key"]
+    service_enc, nonce_s, tag_s = encrypt_data(key, service.encode())
+    username_enc, nonce_u, tag_u = encrypt_data(key, username.encode())
+    password_enc, nonce_p, tag_p = encrypt_data(key, password.encode())
+
+    insert_entry(
+        SESSION["user_id"],
+        service_enc,
+        username_enc,
+        password_enc,
+        nonce_p,
+        tag_p
+    )
+    messagebox.showinfo("Succès", "Entrée ajoutée.")
+    show_dashboard(root)
+
+def launch_gui():
+    root = tk.Tk()
+    root.title("Gestionnaire de Mots de Passe")
+    root.geometry("400x600")
+    show_login_screen(root)
+    root.mainloop()
+
+
