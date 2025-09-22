@@ -87,15 +87,22 @@ def get_entries(user_id):
         """, (user_id,))
         return cursor.fetchall()
 
-
-def update_entry(entry_id, service_name, username, password, nonce, tag):
+def update_entry(entry_id, service, username, password,
+                 nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p):
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-        UPDATE entries
-        SET service_name_encrypted = ?, username_encrypted = ?, password_encrypted = ?, nonce = ?, tag = ?
-        WHERE id = ?;
-        """, (service_name, username, password, nonce, tag, entry_id))
+            UPDATE entries SET
+                service = ?, username = ?, password = ?,
+                nonce_service = ?, tag_service = ?,
+                nonce_username = ?, tag_username = ?,
+                nonce_password = ?, tag_password = ?
+            WHERE id = ?;
+        """, (
+            service, username, password,
+            nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p,
+            entry_id
+        ))
         conn.commit()
 
 def delete_entry(entry_id):

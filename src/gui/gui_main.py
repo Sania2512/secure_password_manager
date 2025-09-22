@@ -149,6 +149,29 @@ def show_dashboard(root):
 
         tk.Button(frame, text="Supprimer", command=confirm_delete,
                   font=("Segoe UI", 10), bg=DANGER, fg="white").pack(side=tk.RIGHT)
+        
+        def edit_entry(eid=entry_id, old_service=service, old_username=username, old_password=password):
+            new_service = simpledialog.askstring("Modifier service", "Nouveau nom du service :", initialvalue=old_service)
+            new_username = simpledialog.askstring("Modifier identifiant", "Nouvel identifiant :", initialvalue=old_username)
+            new_password = simpledialog.askstring("Modifier mot de passe", "Nouveau mot de passe :", initialvalue=old_password)
+
+            if not all([new_service, new_username, new_password]):
+                messagebox.showerror("Erreur", "Tous les champs sont requis.")
+                return
+
+            key = SESSION["encryption_key"]
+            service_enc, nonce_s, tag_s = encrypt_data(key, new_service.encode())
+            username_enc, nonce_u, tag_u = encrypt_data(key, new_username.encode())
+            password_enc, nonce_p, tag_p = encrypt_data(key, new_password.encode())
+
+            from src.db.database import update_entry
+            update_entry(eid, service_enc, username_enc, password_enc,
+                        nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p)
+            messagebox.showinfo("Succès", "Entrée modifiée.")
+            show_dashboard(root)
+
+        tk.Button(frame, text="Modifier", command=edit_entry,
+                font=("Segoe UI", 10), bg=PRIMARY, fg="white").pack(side=tk.RIGHT, padx=5)
 
 # ➕ Ajout d’une entrée
 def add_entry(root):
