@@ -1,12 +1,15 @@
 import tkinter as tk
 import datetime
+import string
+import secrets
 from tkinter import messagebox, simpledialog
 from tkinter import font as tkfont
+from PIL import Image, ImageTk
 
 from src.auth.auth_manager import SESSION, logout
 from src.auth.auth_manager import authenticate_user, create_user
 from src.db.database import insert_entry, get_entries, delete_entry, update_entry
-from src.crypto.crypto_utils import encrypt_data, decrypt_data
+from src.crypto.crypto_utils import encrypt_data, decrypt_data, generate_password
 
 # ========= THÈME (bleu sombre) =========
 BG_COLOR        = "#0B1220"   # fond global
@@ -140,6 +143,19 @@ class EntryFormDialog:
             bg=ENTRY_BG, hover_bg="#374151", active_bg="#374151", fg=ENTRY_FG,
             radius=12, padx=10, pady=7, font=("Segoe UI", 11)
         ).grid(row=0, column=1, padx=(8, 0))
+
+        def _gen_pw():
+            new_pw = generate_password()
+            self.password_entry.delete(0, tk.END)
+            self.password_entry.insert(0, new_pw)
+            self.password_entry.config(show="" if self._show_pw.get() else "*")
+
+        RoundedButton(
+            pw_row, "🔄 Générer",
+            command=_gen_pw,
+            bg=SECONDARY, hover_bg=SECONDARY_HOVER, fg="white",
+            radius=12, padx=10, pady=7, font=("Segoe UI", 11)
+        ).grid(row=0, column=2, padx=(8, 0))
 
         # --- Message d'erreur
         self.err = tk.Label(wrap, text="", font=("Segoe UI", 10), bg=CARD_COLOR, fg=DANGER)
@@ -282,11 +298,20 @@ def build_centered_card(root, *, min_w=360, max_w=720, pad=24):
     return page, card
 
 
-
 # ========= ÉCRANS =========
 def show_login_screen(root):
     clear_window(root)
+    # Charge et affiche l'image de fond
+    bg_path = "src/background.png"  # Mets le nom de ton image ici
+    img = Image.open(bg_path)
+    img = img.resize((root.winfo_width(), root.winfo_height()), Image.Resampling.LANCZOS)
+    bg_img = ImageTk.PhotoImage(img)
+    bg_label = tk.Label(root, image=bg_img)
+    bg_label.image = bg_img  # Garde une référence
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
     _, card = build_centered_card(root)
+    card.lift()  # S'assure que la carte est au-dessus de l'image
 
     tk.Label(card, text="🔐 Gestionnaire de Mots de Passe",
              font=TITLE_FONT, bg=CARD_COLOR, fg=TEXT)\
