@@ -136,11 +136,31 @@ def show_dashboard(root):
         tk.Label(frame, text=f"👤 Identifiant : {username}", font=FONT, bg=CARD_COLOR).pack(anchor="w")
         tk.Label(frame, text=f"🔑 Mot de passe : {'*' * len(password)}", font=FONT, bg=CARD_COLOR).pack(anchor="w")
 
-        def show_password(p=password):
-            messagebox.showinfo("Mot de passe", p)
+        def show_password_temporarily(p):
+            # Crée une fenêtre temporaire
+            popup = tk.Toplevel()
+            popup.title("Mot de passe")
+            popup.configure(bg=CARD_COLOR)
+            popup.geometry("300x100")
+            popup.resizable(False, False)
 
-        tk.Button(frame, text="Afficher", command=show_password,
-                  font=("Segoe UI", 10), bg=SECONDARY, fg="white").pack(side=tk.RIGHT, padx=5)
+            label = tk.Label(popup, text=f"🔑 {p}", font=FONT, bg=CARD_COLOR)
+            label.pack(pady=10)
+
+            def copy_to_clipboard():
+                popup.clipboard_clear()
+                popup.clipboard_append(p)
+                popup.update()  # Nécessaire pour que le presse-papiers soit actif
+                messagebox.showinfo("Copié", "Mot de passe copié dans le presse-papiers.")
+
+            tk.Button(popup, text="📋 Copier", command=copy_to_clipboard,
+                    font=("Segoe UI", 10), bg=SECONDARY, fg="white").pack()
+
+            # Ferme automatiquement après 5 secondes
+            popup.after(5000, popup.destroy)
+
+        tk.Button(frame, text="Afficher", command=lambda p=password: show_password_temporarily(p),
+          font=("Segoe UI", 10), bg=SECONDARY, fg="white").pack(side=tk.RIGHT, padx=5)
 
         def confirm_delete(eid=entry_id):
             if messagebox.askyesno("Confirmer", "Supprimer cette entrée ?"):
