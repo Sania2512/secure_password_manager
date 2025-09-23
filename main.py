@@ -3,5 +3,7 @@ from src.gui.gui_main import launch_gui
 
 if __name__ == "__main__":
     initialize_database()
-    print("Base de données initialisée.")
-    launch_gui()
+    try:
+        launch_gui()
+    except KeyboardInterrupt:
+        print("\nApplication fermée proprement par l'utilisateur.")

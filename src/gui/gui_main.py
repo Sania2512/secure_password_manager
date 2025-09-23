@@ -105,9 +105,29 @@ def show_registration_screen(root):
               font=FONT, bg=SECONDARY, fg="white", padx=10, pady=5).pack()
 
 # 🏠 Tableau de bord
-def show_dashboard(root):
+def show_dashboard(root, search_query=""):
     clear_window(root)
     tk.Label(root, text=f"👋 Bienvenue {SESSION['username']}", font=TITLE_FONT, bg=BG_COLOR).pack(pady=10)
+    
+    search_var = tk.StringVar(root)
+
+    search_frame = tk.Frame(root, bg=BG_COLOR)
+    search_frame.pack(pady=5)
+
+    tk.Label(search_frame, text="🔎 Rechercher un service :", font=FONT, bg=BG_COLOR).pack(side=tk.LEFT)
+    search_entry = tk.Entry(search_frame, textvariable=search_var, font=FONT, width=25)
+    search_entry.pack(side=tk.LEFT, padx=5)
+
+    def refresh_entries(*args):
+        show_dashboard(root, search_query=search_var.get())
+
+    search_var.trace_add("write", lambda *args: refresh_entries())
+
+    def reset_search():
+        search_var.set("")
+
+    tk.Button(search_frame, text="Réinitialiser", command=reset_search,
+            font=("Segoe UI", 10), bg=SECONDARY, fg="white").pack(side=tk.LEFT, padx=5)
 
     tk.Button(root, text="➕ Ajouter une entrée", command=lambda: add_entry(root),
               font=FONT, bg=PRIMARY, fg="white", padx=10, pady=5).pack(pady=5)
@@ -117,6 +137,8 @@ def show_dashboard(root):
 
     entries = get_entries(SESSION["user_id"])
     key = SESSION["encryption_key"]
+
+    found = 0
 
     for entry in entries:
         (entry_id, service_enc, username_enc, password_enc,
@@ -128,6 +150,12 @@ def show_dashboard(root):
         except Exception:
             service = "[Erreur de déchiffrement]"
             username = password = ""
+
+        # 🔍 Filtrage par recherche
+        if search_query and search_query.lower() not in service.lower():
+            continue
+
+        found += 1
 
         frame = tk.Frame(root, bg=CARD_COLOR, relief=tk.RIDGE, borderwidth=1, padx=10, pady=10)
         frame.pack(pady=5, fill=tk.X, padx=20)
@@ -192,6 +220,10 @@ def show_dashboard(root):
 
         tk.Button(frame, text="Modifier", command=edit_entry,
                 font=("Segoe UI", 10), bg=PRIMARY, fg="white").pack(side=tk.RIGHT, padx=5)
+        
+    if found == 0:
+        tk.Label(root, text="Aucun service ne correspond à votre recherche.",
+                font=FONT, bg=BG_COLOR, fg="gray").pack(pady=10)
 
 # ➕ Ajout d’une entrée
 def add_entry(root):
