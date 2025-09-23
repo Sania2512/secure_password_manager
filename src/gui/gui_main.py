@@ -1,4 +1,5 @@
 import tkinter as tk
+import datetime
 from tkinter import messagebox, simpledialog
 from src.auth.auth_manager import SESSION, logout
 from src.auth.auth_manager import authenticate_user, create_user
@@ -231,6 +232,13 @@ def add_entry(root):
     username = simpledialog.askstring("Identifiant", "Nom d'utilisateur ou email :")
     password = simpledialog.askstring("Mot de passe", "Mot de passe correspondant :")
 
+    forbidden_chars = [";", "--", "'"]
+
+    if any(c in service for c in forbidden_chars) or any(c in username for c in forbidden_chars):
+        log_attempt("Tentative d'injection détectée", service, username)
+        messagebox.showerror("Caractères interdits", "Les champs ne doivent pas contenir ';', '--' ou des apostrophes.")
+        return
+
     if not all([service, username, password]):
         messagebox.showerror("Erreur", "Tous les champs sont requis.")
         return
@@ -247,6 +255,11 @@ def add_entry(root):
     )
     messagebox.showinfo("Succès", "Entrée ajoutée.")
     show_dashboard(root)
+
+def log_attempt(message, service="", username=""):
+    with open("security_log.txt", "a") as f:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"[{timestamp}] {message} | Service: {service} | Identifiant: {username}\n")
 
 # 🚀 Lancement
 def launch_gui():
