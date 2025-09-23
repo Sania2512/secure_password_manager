@@ -12,7 +12,7 @@ from src.db.database import insert_entry, get_entries, delete_entry, update_entr
 from src.crypto.crypto_utils import encrypt_data, decrypt_data, generate_password
 
 # ========= THÈME (bleu sombre) =========
-BG_COLOR        = "#0B1220"   # fond global
+BG_COLOR        = "#445396"   # fond global
 CARD_COLOR      = "#0F172A"   # cartes
 ENTRY_BG        = "#1F2937"   # fond champs
 ENTRY_FG        = "#E5E7EB"
@@ -31,7 +31,7 @@ BORDER          = "#1f2a44"
 FONT        = ("Segoe UI", 12)
 TITLE_FONT  = ("Segoe UI", 18, "bold")
 
-FORBIDDEN_CHARS = [";", "--", "'"]  # simple garde-fou
+FORBIDDEN_CHARS = [";", "--", "'", "*", "!"]  # simple garde-fou
 
 # ========= Bouton arrondi (Canvas) =========
 class RoundedButton(tk.Canvas):
@@ -437,6 +437,13 @@ def show_dashboard(root, search_query=""):
     e_search.delete(0, tk.END); e_search.insert(0, search_var.get())
     e_search.grid(row=0, column=1, sticky="ew")
     e_search.bind("<KeyRelease>", lambda _e: show_dashboard(root, e_search.get().strip()))
+
+    # Correction ici : on utilise search_var et on passe sa valeur à show_dashboard
+    def on_search(_e):
+        search_text = e_search.get().strip()
+        show_dashboard(root, search_text)
+    e_search.bind("<KeyRelease>", on_search)
+
     RoundedButton(search_bar, "Réinitialiser",
                   lambda: [e_search.delete(0, tk.END), show_dashboard(root, "")],
                   bg=SECONDARY, hover_bg=SECONDARY_HOVER, radius=16, padx=14, pady=6, font=("Segoe UI", 11))\
@@ -548,7 +555,7 @@ def add_entry(root):
 
     if any(c in service for c in FORBIDDEN_CHARS) or any(c in username for c in FORBIDDEN_CHARS):
         log_attempt("Tentative d'injection détectée", service, username)
-        messagebox.showerror("Caractères interdits", "Les champs ne doivent pas contenir ';', '--' ou des apostrophes.")
+        messagebox.showerror("Caractères interdits", "Les champs ne doivent pas contenir ';', '--','!'ou des apostrophes.")
         return
 
     k = SESSION["encryption_key"]
