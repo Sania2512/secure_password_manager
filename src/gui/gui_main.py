@@ -357,6 +357,12 @@ def show_login_screen(root):
 def _attempt_login(username_entry, password_entry):
     username = username_entry.get().strip()
     password = password_entry.get()
+
+    if any(c in username for c in FORBIDDEN_CHARS):
+            log_attempt_start("Tentative d'injection détectée", username)
+            messagebox.showerror("Caractères interdits", "Le username ne doit pas contenir ';', '--','!'ou des apostrophes.")
+            return
+
     if authenticate_user(username, password):
         messagebox.showinfo("Succès", "Connexion réussie.")
         show_dashboard(username_entry.winfo_toplevel())
@@ -396,6 +402,12 @@ def show_registration_screen(root):
         username = username_entry.get().strip()
         password = password_entry.get()
         confirm  = confirm_entry.get()
+
+        if any(c in username for c in FORBIDDEN_CHARS):
+            log_attempt_start("Tentative d'injection détectée", username)
+            messagebox.showerror("Caractères interdits", "Le username ne doit pas contenir ';', '--','!'ou des apostrophes.")
+            return
+
         if password != confirm:
             messagebox.showerror("Erreur", "Les mots de passe ne correspondent pas.")
             return
@@ -409,142 +421,197 @@ def show_registration_screen(root):
                   bg=PRIMARY, hover_bg=PRIMARY_HOVER)\
         .grid(row=8, column=0, pady=(6, 0))
 
-def show_dashboard(root, search_query=""):
+def show_dashboard(root):
     clear_window(root)
     _, card = build_centered_card(root, max_w=900)
-
+ 
     tk.Label(card, text=f"👋 Bienvenue {SESSION['username']}",
              font=TITLE_FONT, bg=CARD_COLOR, fg=TEXT)\
         .grid(row=0, column=0, sticky="n", pady=(0, 8))
-
+ 
+    # ----- Barre d'actions -----
     actions = tk.Frame(card, bg=CARD_COLOR)
     actions.grid(row=1, column=0, pady=(0, 8))
-    RoundedButton(actions, "➕ Ajouter une entrée", lambda: add_entry(root),
-                  bg=PRIMARY, hover_bg=PRIMARY_HOVER)\
-        .pack(side="left", padx=6)
-    RoundedButton(actions, "🚪 Déconnexion", lambda: [logout(), show_login_screen(root)],
-                  bg=DANGER, hover_bg=DANGER_HOVER)\
-        .pack(side="left", padx=6)
-
-    # Recherche
+ 
+    # (on ajoute le handler local pour + Entrée)
+    # il ouvrira la modale, insèrera en BD et rerafraîchira la liste, sans reconstruire toute la page
+    # ---------------------------------------------------------
+    # ATTENTION : on n'appelle plus add_entry(root) ici !
+    # ---------------------------------------------------------
+ 
+    # ----- Recherche -----
     search_bar = tk.Frame(card, bg=CARD_COLOR)
     search_bar.grid(row=2, column=0, sticky="ew", pady=(4, 6))
     search_bar.grid_columnconfigure(1, weight=1)
+ 
     tk.Label(search_bar, text="🔎 Rechercher :", font=FONT, bg=CARD_COLOR, fg=TEXT)\
         .grid(row=0, column=0, sticky="w", padx=(0, 8))
-    search_var = tk.StringVar(card, value=search_query)
+ 
     e_search = make_entry(search_bar)
-    e_search.delete(0, tk.END); e_search.insert(0, search_var.get())
     e_search.grid(row=0, column=1, sticky="ew")
-    e_search.bind("<KeyRelease>", lambda _e: show_dashboard(root, e_search.get().strip()))
-
-    # Correction ici : on utilise search_var et on passe sa valeur à show_dashboard
-    def on_search(_e):
-        search_text = e_search.get().strip()
-        show_dashboard(root, search_text)
-    e_search.bind("<KeyRelease>", on_search)
-
-    RoundedButton(search_bar, "Réinitialiser",
-                  lambda: [e_search.delete(0, tk.END), show_dashboard(root, "")],
-                  bg=SECONDARY, hover_bg=SECONDARY_HOVER, radius=16, padx=14, pady=6, font=("Segoe UI", 11))\
+ 
+    # bouton Réinitialiser
+    def reset_search():
+        e_search.delete(0, tk.END)
+        e_search.focus_set()
+        render_entries()
+ 
+    RoundedButton(search_bar, "Réinitialiser", reset_search,
+                  bg=SECONDARY, hover_bg=SECONDARY_HOVER,
+                  radius=16, padx=14, pady=6, font=("Segoe UI", 11))\
         .grid(row=0, column=2, padx=(8, 0))
-
-    # Liste
+ 
+    # ----- Conteneur liste -----
     list_frame = tk.Frame(card, bg=CARD_COLOR)
     list_frame.grid(row=3, column=0, sticky="ew", pady=(6, 0))
     list_frame.grid_columnconfigure(0, weight=1)
-
-    entries = get_entries(SESSION["user_id"])
+ 
     key = SESSION["encryption_key"]
-
-    found = 0
-    for row in entries:
-        (entry_id, service_ct, username_ct, password_ct,
-         nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p) = row
-        try:
-            service = decrypt_data(key, service_ct, nonce_s, tag_s).decode()
-            username = decrypt_data(key, username_ct, nonce_u, tag_u).decode()
-            password = decrypt_data(key, password_ct, nonce_p, tag_p).decode()
-        except Exception:
-            service = "[Erreur de déchiffrement]"; username = password = ""
-
-        if search_query and search_query.lower() not in service.lower():
-            continue
-        found += 1
-
-        item = tk.Frame(list_frame, bg=CARD_COLOR, padx=12, pady=12,
-                        highlightbackground=BORDER, highlightthickness=1)
-        item.grid(sticky="ew", pady=8)
-        item.grid_columnconfigure(0, weight=1)
-
-        tk.Label(item, text=f"🔐 Service : {service}", font=FONT, bg=CARD_COLOR, fg=TEXT)\
-            .grid(row=0, column=0, sticky="w")
-        tk.Label(item, text=f"👤 Identifiant : {username}", font=FONT, bg=CARD_COLOR, fg=SUBTEXT)\
-            .grid(row=1, column=0, sticky="w")
-        tk.Label(item, text=f"🔑 Mot de passe : {'*' * len(password)}", font=FONT, bg=CARD_COLOR, fg=SUBTEXT)\
-            .grid(row=2, column=0, sticky="w")
-
-        # boutons à droite
-        btns = tk.Frame(item, bg=CARD_COLOR)
-        btns.grid(row=0, column=1, rowspan=3, sticky="e")
-
-        def show_password_temporarily(p=password):
-            popup = tk.Toplevel(root)
-            popup.title("Mot de passe")
-            popup.configure(bg=CARD_COLOR)
-            popup.geometry("300x120")
-            popup.resizable(False, False)
-            tk.Label(popup, text=f"🔑 {p}", font=FONT, bg=CARD_COLOR, fg=TEXT).pack(pady=12)
-            def copy_to_clipboard():
-                popup.clipboard_clear(); popup.clipboard_append(p); popup.update()
-                messagebox.showinfo("Copié", "Mot de passe copié dans le presse-papiers.")
-            RoundedButton(popup, "📋 Copier", copy_to_clipboard,
+ 
+    def reload_entries():
+        return get_entries(SESSION["user_id"])
+ 
+    # on garde les entrées en mémoire et on rerender sans tout casser
+    entries = reload_entries()
+ 
+    def render_entries():
+        # efface uniquement la liste affichée
+        for w in list_frame.winfo_children():
+            w.destroy()
+ 
+        q = e_search.get().lower().strip()
+        found = 0
+ 
+        for row in entries:
+            (entry_id, service_ct, username_ct, password_ct,
+             nonce_s, tag_s, nonce_u, tag_u, nonce_p, tag_p) = row
+            try:
+                service  = decrypt_data(key, service_ct, nonce_s, tag_s).decode()
+                username = decrypt_data(key, username_ct, nonce_u, tag_u).decode()
+                password = decrypt_data(key, password_ct, nonce_p, tag_p).decode()
+            except Exception:
+                service = "[Erreur de déchiffrement]"; username = password = ""
+ 
+            if q and q not in service.lower():
+                continue
+            found += 1
+ 
+            item = tk.Frame(list_frame, bg=CARD_COLOR, padx=12, pady=12,
+                            highlightbackground=BORDER, highlightthickness=1)
+            item.grid(sticky="ew", pady=8)
+            item.grid_columnconfigure(0, weight=1)
+ 
+            tk.Label(item, text=f"🔐 Service : {service}", font=FONT, bg=CARD_COLOR, fg=TEXT)\
+                .grid(row=0, column=0, sticky="w")
+            tk.Label(item, text=f"👤 Identifiant : {username}", font=FONT, bg=CARD_COLOR, fg=SUBTEXT)\
+                .grid(row=1, column=0, sticky="w")
+            tk.Label(item, text=f"🔑 Mot de passe : {'*' * len(password)}", font=FONT, bg=CARD_COLOR, fg=SUBTEXT)\
+                .grid(row=2, column=0, sticky="w")
+ 
+            # boutons à droite
+            btns = tk.Frame(item, bg=CARD_COLOR)
+            btns.grid(row=0, column=1, rowspan=3, sticky="e")
+ 
+            def show_password_temporarily(p=password):
+                popup = tk.Toplevel(root)
+                popup.title("Mot de passe")
+                popup.configure(bg=CARD_COLOR)
+                popup.geometry("300x120")
+                popup.resizable(False, False)
+                tk.Label(popup, text=f"🔑 {p}", font=FONT, bg=CARD_COLOR, fg=TEXT).pack(pady=12)
+ 
+                def copy_to_clipboard():
+                    popup.clipboard_clear(); popup.clipboard_append(p); popup.update()
+                    messagebox.showinfo("Copié", "Mot de passe copié dans le presse-papiers.")
+ 
+                RoundedButton(popup, "📋 Copier", copy_to_clipboard,
+                              bg=SECONDARY, hover_bg=SECONDARY_HOVER,
+                              radius=16, padx=14, pady=6, font=("Segoe UI", 11)).pack()
+                popup.after(5000, popup.destroy)
+ 
+            RoundedButton(btns, "Afficher", show_password_temporarily,
                           bg=SECONDARY, hover_bg=SECONDARY_HOVER,
-                          radius=16, padx=14, pady=6, font=("Segoe UI", 11)).pack()
-            popup.after(5000, popup.destroy)
-
-        RoundedButton(btns, "Afficher", show_password_temporarily,
-                      bg=SECONDARY, hover_bg=SECONDARY_HOVER,
-                      radius=16, padx=14, pady=6, font=("Segoe UI", 11))\
-            .pack(side="right", padx=6)
-
-        def confirm_delete(eid=entry_id):
-            if messagebox.askyesno("Confirmer", "Supprimer cette entrée ?"):
-                delete_entry(eid); show_dashboard(root, e_search.get().strip())
-
-        RoundedButton(btns, "Supprimer", confirm_delete,
-                      bg=DANGER, hover_bg=DANGER_HOVER,
-                      radius=16, padx=14, pady=6, font=("Segoe UI", 11))\
-            .pack(side="right", padx=6)
-
-        def edit_dialog(eid=entry_id, old_s=service, old_u=username, old_p=password):
-            vals = open_entry_form(root, "Modifier l'entrée", old_s, old_u, old_p)
-            if vals is None:
-                return
-            ns, nu, np = vals
-
-            if any(c in ns for c in FORBIDDEN_CHARS) or any(c in nu for c in FORBIDDEN_CHARS):
-                messagebox.showerror("Caractères interdits", "Les champs ne doivent pas contenir ';', '--' ou des apostrophes.")
-                return
-
-            k = SESSION["encryption_key"]
-            s_ct, nsn, tgs = encrypt_data(k, ns.encode())
-            u_ct, nun, tgu = encrypt_data(k, nu.encode())
-            p_ct, npn, tgp = encrypt_data(k, np.encode())
-            update_entry(eid, s_ct, u_ct, p_ct, nsn, tgs, nun, tgu, npn, tgp)
-            messagebox.showinfo("Succès", "Entrée modifiée.")
-            show_dashboard(root)
-
-
-        RoundedButton(btns, "Modifier", edit_dialog,
-                      bg=PRIMARY, hover_bg=PRIMARY_HOVER,
-                      radius=16, padx=14, pady=6, font=("Segoe UI", 11))\
-            .pack(side="right", padx=6)
-
-    if found == 0:
-        tk.Label(card, text="Aucun service ne correspond à votre recherche.",
-                 font=FONT, bg=CARD_COLOR, fg=SUBTEXT)\
-            .grid(row=4, column=0, sticky="n", pady=(8, 0))
+                          radius=16, padx=14, pady=6, font=("Segoe UI", 11)).pack(side="right", padx=6)
+ 
+            def confirm_delete(eid=entry_id):
+                if messagebox.askyesno("Confirmer", "Supprimer cette entrée ?"):
+                    nonlocal entries
+                    delete_entry(eid)
+                    entries = reload_entries()
+                    render_entries()
+ 
+            RoundedButton(btns, "Supprimer", confirm_delete,
+                          bg=DANGER, hover_bg=DANGER_HOVER,
+                          radius=16, padx=14, pady=6, font=("Segoe UI", 11)).pack(side="right", padx=6)
+ 
+            def edit_dialog(eid=entry_id, old_s=service, old_u=username, old_p=password):
+                vals = open_entry_form(root, "Modifier l'entrée", old_s, old_u, old_p)
+                if vals is None:
+                    return
+                ns, nu, np = vals
+ 
+                if any(c in ns for c in FORBIDDEN_CHARS) or any(c in nu for c in FORBIDDEN_CHARS):
+                    messagebox.showerror("Caractères interdits", "Les champs ne doivent pas contenir ';', '--' ou des apostrophes.")
+                    return
+ 
+                k = SESSION["encryption_key"]
+                s_ct, nsn, tgs = encrypt_data(k, ns.encode())
+                u_ct, nun, tgu = encrypt_data(k, nu.encode())
+                p_ct, npn, tgp = encrypt_data(k, np.encode())
+ 
+                nonlocal entries
+                update_entry(eid, s_ct, u_ct, p_ct, nsn, tgs, nun, tgu, npn, tgp)
+                entries = reload_entries()
+                messagebox.showinfo("Succès", "Entrée modifiée.")
+                render_entries()
+ 
+            RoundedButton(btns, "Modifier", edit_dialog,
+                          bg=PRIMARY, hover_bg=PRIMARY_HOVER,
+                          radius=16, padx=14, pady=6, font=("Segoe UI", 11)).pack(side="right", padx=6)
+ 
+        if found == 0:
+            tk.Label(list_frame, text="Aucun service ne correspond à votre recherche.",
+                     font=FONT, bg=CARD_COLOR, fg=SUBTEXT)\
+                .grid(sticky="n", pady=(8, 0))
+ 
+    # --- Handler du bouton "Ajouter une entrée" (appelé ci-dessus) ---
+    def on_add_entry():
+        vals = open_entry_form(root, "Ajouter une entrée")
+        if vals is None:
+            return
+        service, username, password = vals
+ 
+        if any(c in service for c in FORBIDDEN_CHARS) or any(c in username for c in FORBIDDEN_CHARS):
+            messagebox.showerror("Caractères interdits",
+                                 "Les champs ne doivent pas contenir ';', '--' ou des apostrophes.")
+            return
+ 
+        k = SESSION["encryption_key"]
+        s_ct, ns, ts = encrypt_data(k, service.encode())
+        u_ct, nu, tu = encrypt_data(k, username.encode())
+        p_ct, np, tp = encrypt_data(k, password.encode())
+ 
+        insert_entry(SESSION["user_id"], s_ct, u_ct, p_ct, ns, ts, nu, tu, np, tp)
+        messagebox.showinfo("Succès", "Entrée ajoutée.")
+ 
+        nonlocal entries
+        entries = reload_entries()
+        render_entries()
+        e_search.focus_set()
+ 
+    # maintenant qu'on a le handler, on place les boutons d'action
+    RoundedButton(actions, "➕ Ajouter une entrée", on_add_entry,
+                  bg=PRIMARY, hover_bg=PRIMARY_HOVER).pack(side="left", padx=6)
+    RoundedButton(actions, "🚪 Déconnexion",
+                  lambda: [logout(), show_login_screen(root)],
+                  bg=DANGER, hover_bg=DANGER_HOVER).pack(side="left", padx=6)
+ 
+    # saisie fluide : filtre la liste sans reconstruire la page
+    e_search.bind("<KeyRelease>", lambda _e: render_entries())
+ 
+    # premier rendu + focus
+    render_entries()
+    e_search.focus_set()
 
 # ========= Ajout d’une entrée =========
 def add_entry(root):
@@ -572,6 +639,11 @@ def log_attempt(message, service="", username=""):
     with open("security_log.txt", "a", encoding="utf-8") as f:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         f.write(f"[{timestamp}] {message} | Service: {service} | Identifiant: {username}\n")
+
+def log_attempt_start(message, username=""):
+    with open("security_log.txt", "a", encoding="utf-8") as f:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"[{timestamp}] {message} | Identifiant: {username}\n")
 
 # ========= Lancement =========
 def launch_gui():
