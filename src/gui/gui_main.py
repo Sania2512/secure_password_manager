@@ -519,11 +519,27 @@ def show_dashboard(root):
                 popup.geometry("300x120")
                 popup.resizable(False, False)
                 tk.Label(popup, text=f"🔑 {p}", font=FONT, bg=CARD_COLOR, fg=TEXT).pack(pady=12)
- 
+
                 def copy_to_clipboard():
-                    popup.clipboard_clear(); popup.clipboard_append(p); popup.update()
-                    messagebox.showinfo("Copié", "Mot de passe copié dans le presse-papiers.")
- 
+                    # Sauvegarde l'ancien contenu
+                    try:
+                        old_clip = popup.clipboard_get()
+                    except Exception:
+                        old_clip = ""
+                    popup.clipboard_clear()
+                    popup.clipboard_append(p)
+                    popup.update()
+                    messagebox.showinfo("Copié", "Mot de passe copié dans le presse-papiers.\nIl sera effacé dans 5 secondes.")
+
+                    # Efface le presse-papiers après 5 secondes
+                    def clear_clipboard(root):
+                        try:
+                            root.clipboard_clear()
+                            print("[INFO] Presse-papiers vidé avec succès.")
+                        except tk.TclError:
+                            print("[INFO] Impossible de vider le presse-papiers (fenêtre inactive).")
+                    root.after(10000, lambda: clear_clipboard(root))  # 5000 ms = 5 s
+
                 RoundedButton(popup, "📋 Copier", copy_to_clipboard,
                               bg=SECONDARY, hover_bg=SECONDARY_HOVER,
                               radius=16, padx=14, pady=6, font=("Segoe UI", 11)).pack()
